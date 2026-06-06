@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "memory-allocator-sim"
+version = "1.0.0"
+description = "شبیه‌سازی الگوریتم‌های First Fit, Best Fit, Worst Fit"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "matplotlib>=3.7.0",
+    "customtkinter>=5.2.0",
+    "pillow>=10.0.0",
+]
+
+[project.scripts]
+memsim = "memory_allocator.cli:cli_main"
+memsim-gui = "memory_allocator.gui:launch_gui"
+
+[tool.setuptools.packages.find]
+include = ["memory_allocator*"]
