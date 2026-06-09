@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>گزارش پروژه — شبیه‌سازی تخصیص حافظه</title>
+  <style>
+    @page { margin: 2cm; }
+    body { font-family: Tahoma, Arial, sans-serif; line-height: 1.8; max-width: 800px; margin: 0 auto; padding: 24px; color: #1a1a1a; }
+    h1 { color: #4f46e5; border-bottom: 3px solid #4f46e5; padding-bottom: 8px; }
+    h2 { color: #312e81; margin-top: 28px; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+    th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: center; }
+    th { background: #eef2ff; }
+    .winner { background: #d1fae5; font-weight: bold; }
+    code, pre { background: #f4f4f5; padding: 12px; border-radius: 8px; direction: ltr; text-align: left; display: block; }
+    .meta { color: #666; margin-bottom: 24px; }
+    @media print { body { padding: 0; } }
+  </style>
+</head>
+<body>
+
+<h1>گزارش پروژه: شبیه‌سازی الگوریتم‌های تخصیص حافظه</h1>
+<p class="meta">درس: سیستم‌عامل | زبان: Python 3.8+ | الگوریتم‌ها: First Fit, Best Fit, Worst Fit</p>
+
+<h2>۱. مقدمه</h2>
+<p>این پروژه شبیه‌ساز مدل <strong>تقسیم‌بندی ثابت حافظه (Fixed Partition)</strong> است. هدف، مقایسه سه الگوریتم کلاسیک تخصیص حافظه و تحلیل <strong>Internal Fragmentation</strong> و <strong>Memory Utilization</strong> می‌باشد.</p>
+
+<h2>۲. شرح مسئله</h2>
+<ul>
+  <li>مجموعه‌ای از بلوک‌های حافظه با اندازه ثابت</li>
+  <li>مجموعه‌ای از پردازه‌ها با نیاز حافظه مشخص</li>
+  <li>هر بلوک حداکثر یک پردازه می‌پذیرد</li>
+  <li>پردازه فقط در بلوکی با اندازه کافی قرار می‌گیرد</li>
+</ul>
+
+<h2>۳. الگوریتم‌ها</h2>
+<table>
+  <tr><th>الگوریتم</th><th>روش انتخاب بلوک</th></tr>
+  <tr><td>First Fit</td><td>اولین بلوک آزاد مناسب</td></tr>
+  <tr><td>Best Fit</td><td>کوچک‌ترین بلوک مناسب</td></tr>
+  <tr><td>Worst Fit</td><td>بزرگ‌ترین بلوک مناسب</td></tr>
+</table>
+
+<h2>۴. فرمول‌ها</h2>
+<pre>Internal Fragmentation = Block Size - Process Size
+Memory Utilization = (Used Memory / Total Memory) × 100</pre>
+
+<h2>۵. نتایج نمونه Classic</h2>
+<p><strong>ورودی:</strong> Blocks: 100, 500, 200, 300, 600 | Processes: 212, 417, 112, 426</p>
+<table>
+  <tr><th>الگوریتم</th><th>تخصیص</th><th>Used (KB)</th><th>Frag. (KB)</th><th>Utilization</th></tr>
+  <tr><td>First Fit</td><td>3/4</td><td>741</td><td>559</td><td>43.59%</td></tr>
+  <tr class="winner"><td>Best Fit</td><td>4/4</td><td>1167</td><td>433</td><td>68.65%</td></tr>
+  <tr><td>Worst Fit</td><td>3/4</td><td>741</td><td>659</td><td>43.59%</td></tr>
+</table>
+
+<h2>۶. تحلیل</h2>
+<p>در این نمونه، <strong>Best Fit</strong> بهترین نتیجه را داشت: تمام پردازه‌ها تخصیص یافتند، fragmentation کمتر و utilization بالاتر بود. Worst Fit بیشترین فضای هدررفته را ایجاد کرد.</p>
+
+<h2>۷. خروجی برنامه</h2>
+<ul>
+  <li>رابط گرافیکی (GUI) با نقشه حافظه و نمودار</li>
+  <li>گزارش متنی: output/report.txt</li>
+  <li>نمودار PNG: output/comparison_chart.png</li>
+  <li>نقشه حافظه: output/memory_maps/</li>
+</ul>
+
+<h2>۸. نتیجه‌گیری</h2>
+<p>انتخاب الگوریتم تخصیص حافظه تأثیر مستقیم بر بهره‌وری دارد. Best Fit در اکثر نمونه‌های آموزشی گزینه بهتری برای کاهش fragmentation است.</p>
+
+<p style="margin-top:40px;color:#888;font-size:12px;">برای PDF: Ctrl+P → Save as PDF</p>
+</body>
+</html>
