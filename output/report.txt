@@ -1,0 +1,37 @@
+MEMORY ALLOCATION SIMULATION REPORT
+================================================================================
+
+Memory Blocks : [100, 500, 200, 300, 600]
+Processes     : [212, 417, 112, 426]
+Total Memory  : 1700 KB
+
+================================================================================
+Strategy: First Fit
+================================================================================
+
+Process | Size | Allocated Block | Block Size | Frag.
+--------+------+-----------------+------------+------
+P1      | 212  | B2              | 500        | 288  
+P2      | 417  | B5              | 600        | 183  
+P3      | 112  | B3              | 200        | 88   
+P4      | 426  | Not Allocated   | -          | -    
+
+Memory Map:
+  B1 [ 100 KB] -> FREE
+  B2 [ 500 KB] -> P1 (USED)
+  B3 [ 200 KB] -> P3 (USED)
+  B4 [ 300 KB] -> FREE
+  B5 [ 600 KB] -> P2 (USED)
+
+Summary:
+Used Memory            : 741 KB
+Allocated Memory       : 1300 KB
+Internal Fragmentation : 559 KB
+Free Memory            : 400 KB
+Total Wasted Memory    : 959 KB
+Memory Utilization     : 43.59%
+Allocation Efficiency  : 57.00%
+Waste Ratio            : 56.41%
+Allocated Processes    : 3/4
+Unallocated Processes  : P4
+
