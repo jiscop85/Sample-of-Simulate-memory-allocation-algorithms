@@ -76,4 +76,59 @@ class MemoryAllocationSimulator:
             unallocated_processes=unallocated_processes,
         )
 
-   
+    @staticmethod
+    def _first_fit_chooser(block_states: List[BlockState], process_size: int) -> Optional[int]:
+        for i, block in enumerate(block_states):
+            if not block.is_used and block.size >= process_size:
+                return i
+        return None
+
+    @staticmethod
+    def _best_fit_chooser(block_states: List[BlockState], process_size: int) -> Optional[int]:
+        best_index: Optional[int] = None
+        best_size: Optional[int] = None
+
+        for i, block in enumerate(block_states):
+            if not block.is_used and block.size >= process_size:
+                if best_size is None or block.size < best_size:
+                    best_size = block.size
+                    best_index = i
+        return best_index
+
+    @staticmethod
+    def _worst_fit_chooser(block_states: List[BlockState], process_size: int) -> Optional[int]:
+        worst_index: Optional[int] = None
+        worst_size: Optional[int] = None
+
+        for i, block in enumerate(block_states):
+            if not block.is_used and block.size >= process_size:
+                if worst_size is None or block.size > worst_size:
+                    worst_size = block.size
+                    worst_index = i
+        return worst_index
+
+    def first_fit(self) -> SimulationResult:
+        return self._simulate("First Fit", self._first_fit_chooser)
+
+    def best_fit(self) -> SimulationResult:
+        return self._simulate("Best Fit", self._best_fit_chooser)
+
+    def worst_fit(self) -> SimulationResult:
+        return self._simulate("Worst Fit", self._worst_fit_chooser)
+
+    def run_all(self) -> List[SimulationResult]:
+        return [self.first_fit(), self.best_fit(), self.worst_fit()]
+
+    def run_strategy(self, strategy: str) -> SimulationResult:
+        mapping = {
+            "first fit": self.first_fit,
+            "best fit": self.best_fit,
+            "worst fit": self.worst_fit,
+        }
+        key = strategy.strip().lower()
+        if key not in mapping:
+            raise ValueError(
+                f"الگوریتم نامعتبر: {strategy}. "
+                f"گزینه‌های مجاز: {', '.join(self.STRATEGIES)}"
+            )
+        return mapping[key]()
