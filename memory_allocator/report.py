@@ -166,4 +166,68 @@ def build_report(
             f"Allocated Processes    : {result.allocated_processes}/{len(result.records)}",
         ])
 
-       
+        if result.unallocated_processes:
+            lines.append(
+                "Unallocated Processes  : "
+                + ", ".join(f"P{p}" for p in result.unallocated_processes)
+            )
+        else:
+            lines.append("Unallocated Processes  : None")
+        lines.append("")
+
+    lines.extend([
+        "=" * 80,
+        "Comparison",
+        "=" * 80,
+        format_table(
+            [
+                "Strategy",
+                "Allocated",
+                "Used",
+                "Frag.",
+                "Free",
+                "Utilization",
+                "Efficiency",
+            ],
+            [
+                [
+                    r.strategy_name,
+                    str(r.allocated_processes),
+                    str(r.used_memory),
+                    str(r.internal_fragmentation),
+                    str(r.free_memory),
+                    f"{r.memory_utilization:.2f}%",
+                    f"{r.allocation_efficiency:.2f}%",
+                ]
+                for r in results
+            ],
+        ),
+        "",
+    ])
+
+    best_frag = min(results, key=lambda x: (x.internal_fragmentation, -x.allocated_processes))
+    best_util = max(results, key=lambda x: x.memory_utilization)
+
+    lines.extend([
+        "Analysis:",
+        f"- Lowest internal fragmentation : {best_frag.strategy_name}",
+        f"- Highest memory utilization    : {best_util.strategy_name}",
+        "",
+        "Note: In fixed-partition allocation, internal fragmentation occurs when",
+        "a process is smaller than its assigned block. Free memory represents",
+        "unused blocks (external fragmentation in this model).",
+        "",
+    ])
+
+    return "\n".join(lines)
+
+
+def save_report_to_file(report_text: str, filename: str) -> str:
+    from pathlib import Path
+
+    path = Path(filename)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(report_text)
+    return str(path.resolve())
+
