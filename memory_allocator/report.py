@@ -83,3 +83,87 @@ def print_result(result: SimulationResult) -> None:
         print(f"Unallocated Processes  : {failed}")
     else:
         print("Unallocated Processes  : None")
+
+
+def print_comparison(results: List[SimulationResult]) -> None:
+    print("\n" + "=" * 80)
+    print("مقایسه الگوریتم‌ها")
+    print("=" * 80)
+
+    headers = [
+        "Strategy",
+        "Allocated",
+        "Used",
+        "Frag.",
+        "Free",
+        "Utilization",
+        "Efficiency",
+    ]
+    rows = [
+        [
+            r.strategy_name,
+            str(r.allocated_processes),
+            str(r.used_memory),
+            str(r.internal_fragmentation),
+            str(r.free_memory),
+            f"{r.memory_utilization:.2f}%",
+            f"{r.allocation_efficiency:.2f}%",
+        ]
+        for r in results
+    ]
+    print(format_table(headers, rows))
+
+    best_by_frag = min(
+        results,
+        key=lambda x: (x.internal_fragmentation, -x.allocated_processes),
+    )
+    best_by_util = max(results, key=lambda x: x.memory_utilization)
+    most_allocated = max(results, key=lambda x: (x.allocated_processes, -x.internal_fragmentation))
+
+    print("\nتحلیل نهایی:")
+    print(f"کمترین fragmentation در این نمونه     : {best_by_frag.strategy_name}")
+    print(f"بیشترین استفاده از حافظه در این نمونه : {best_by_util.strategy_name}")
+    print(f"بیشترین تعداد تخصیص موفق              : {most_allocated.strategy_name}")
+
+
+def build_report(
+    blocks: List[int],
+    processes: List[int],
+    results: List[SimulationResult],
+) -> str:
+    lines = [
+        "MEMORY ALLOCATION SIMULATION REPORT",
+        "=" * 80,
+        "",
+        f"Memory Blocks : {blocks}",
+        f"Processes     : {processes}",
+        f"Total Memory  : {sum(blocks)} KB",
+        "",
+    ]
+
+    for result in results:
+        lines.extend([
+            "=" * 80,
+            f"Strategy: {result.strategy_name}",
+            "=" * 80,
+            "",
+            format_table(
+                ["Process", "Size", "Allocated Block", "Block Size", "Frag."],
+                _allocation_rows(result),
+            ),
+            "",
+            _memory_map(result),
+            "",
+            "Summary:",
+            f"Used Memory            : {result.used_memory} KB",
+            f"Allocated Memory       : {result.allocated_memory} KB",
+            f"Internal Fragmentation : {result.internal_fragmentation} KB",
+            f"Free Memory            : {result.free_memory} KB",
+            f"Total Wasted Memory    : {result.total_wasted_memory} KB",
+            f"Memory Utilization     : {result.memory_utilization:.2f}%",
+            f"Allocation Efficiency  : {result.allocation_efficiency:.2f}%",
+            f"Waste Ratio            : {result.waste_ratio:.2f}%",
+            f"Allocated Processes    : {result.allocated_processes}/{len(result.records)}",
+        ])
+
+       
