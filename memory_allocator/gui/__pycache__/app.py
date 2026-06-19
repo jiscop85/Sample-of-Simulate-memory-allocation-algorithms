@@ -524,4 +524,81 @@ class MemoryAllocatorApp(ctk.CTk):
     def _toast(self, message: str, level: str = "info") -> None:
         Toast(self, message, level=level)
 
-   
+    # ── Input helpers ───────────────────────────────────────────────────
+
+    def _get_input_text(self, widget: ctk.CTkTextbox) -> str:
+        return widget.get("1.0", "end").strip()
+
+    def _set_input_text(self, widget: ctk.CTkTextbox, text: str) -> None:
+        widget.delete("1.0", "end")
+        widget.insert("1.0", text)
+
+    def _refresh_chips(self) -> None:
+        try:
+            blocks = parse_int_list(self._get_input_text(self._blocks_entry))
+            processes = parse_int_list(self._get_input_text(self._processes_entry))
+        except ValueError:
+            blocks, processes = [], []
+
+        self._update_chip_row(self._blocks_chips, blocks, COLORS["primary"])
+        self._update_chip_row(self._processes_chips, processes, COLORS["secondary"])
+        self._update_summary(blocks, processes)
+
+    def _update_chip_row(self, container: ctk.CTkFrame, values: List[int], color: str) -> None:
+        for child in container.winfo_children():
+            child.destroy()
+        for v in values:
+            TagChip(container, text=str(v), color=color).pack(side="left", padx=3, pady=4)
+
+    def _update_summary(self, blocks: List[int], processes: List[int]) -> None:
+        self._summary_labels["blocks"].configure(text=str(len(blocks)))
+        self._summary_labels["processes"].configure(text=str(len(processes)))
+        self._summary_labels["total_mem"].configure(text=f"{sum(blocks)} KB" if blocks else "—")
+        self._summary_labels["total_proc"].configure(text=f"{sum(processes)} KB" if processes else "—")
+
+    def _load_sample(self, key: str, silent: bool = False) -> None:
+        data = SAMPLE_DATASETS.get(key)
+        if not data:
+            return
+        self._sample_var.set(key)
+        self._set_input_text(self._blocks_entry, " ".join(str(b) for b in data["blocks"]))
+        self._set_input_text(self._processes_entry, " ".join(str(p) for p in data["processes"]))
+        self._refresh_chips()
+        if not silent:
+            self._toast(f"نمونه «{key}» بارگذاری شد", "success")
+
+    def _load_json(self) -> None:
+        path = filedialog.askopenfilename(
+            title="انتخاب فایل JSON",
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+            initialdir=str(Path(__file__).resolve().parents[2] / "samples"),
+        )
+        if not path:
+            return
+        try:
+            from memory_allocator.utils import load_from_json
+            blocks, processes = load_from_json(path)
+            self._set_input_text(self._blocks_entry, " ".join(str(b) for b in blocks))
+            self._set_input_text(self._processes_entry, " ".join(str(p) for p in processes))
+            self._refresh_chips()
+            self._toast("فایل JSON بارگذاری شد", "success")
+        except Exception as exc:
+            self._toast(str(exc), "error")
+
+    def _clear_input(self) -> None:
+        self._blocks_entry.delete("1.0", "end")
+        self._processes_entry.delete("1.0", "end")
+        self._refresh_chips()
+        self._toast("ورودی پاک شد", "info")
+
+    def _parse_input(self) -> tuple[List[int], List[int]]:
+        blocks = parse_int_list(self._get_input_text(self._blocks_entry))
+        processes = parse_int_list(self._get_input_text(self._processes_entry))
+        if not blocks:
+            raise ValueError("لیست بلوک‌های حافظه نباید خالی باشد.")
+        if not processes:
+            raise ValueError("لیست پردازه‌ها نباید خالی باشد.")
+        return blocks, processes
+
+
+
