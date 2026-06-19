@@ -197,3 +197,116 @@ class MemoryAllocatorApp(ctk.CTk):
         self._pages["compare"] = self._build_compare_page()
         self._pages["export"] = self._build_export_page()
 
+    # ── Pages ───────────────────────────────────────────────────────────
+
+    def _build_input_page(self) -> ctk.CTkFrame:
+        page = ctk.CTkScrollableFrame(self._content, fg_color="transparent")
+        page.grid_columnconfigure((0, 1), weight=1)
+
+        left = ctk.CTkFrame(page, fg_color=COLORS["bg_card"], corner_radius=14, border_width=1, border_color=COLORS["border"])
+        left.grid(row=0, column=0, sticky="nsew", padx=(0, 8), pady=0)
+        left.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(left, text="📦  بلوک‌های حافظه (KB)", font=FONTS["subheading"], text_color=COLORS["text"]).pack(anchor="w", padx=20, pady=(20, 8))
+        ctk.CTkLabel(left, text="اعداد را با فاصله یا کاما جدا کنید", font=FONTS["small"], text_color=COLORS["text_muted"]).pack(anchor="w", padx=20)
+
+        self._blocks_entry = ctk.CTkTextbox(
+            left, height=90, font=FONTS["mono"],
+            fg_color=COLORS["bg_input"], border_color=COLORS["border"], border_width=1,
+            corner_radius=10,
+        )
+        self._blocks_entry.pack(fill="x", padx=20, pady=(8, 12))
+        self._blocks_entry.bind("<KeyRelease>", lambda _e: self._refresh_chips())
+
+        self._blocks_chips = ctk.CTkFrame(left, fg_color="transparent")
+        self._blocks_chips.pack(fill="x", padx=20, pady=(0, 16))
+
+        ctk.CTkFrame(left, fg_color=COLORS["border"], height=1).pack(fill="x", padx=20)
+
+        ctk.CTkLabel(left, text="⚙️  پردازه‌ها (KB)", font=FONTS["subheading"], text_color=COLORS["text"]).pack(anchor="w", padx=20, pady=(16, 8))
+        self._processes_entry = ctk.CTkTextbox(
+            left, height=90, font=FONTS["mono"],
+            fg_color=COLORS["bg_input"], border_color=COLORS["border"], border_width=1,
+            corner_radius=10,
+        )
+        self._processes_entry.pack(fill="x", padx=20, pady=(8, 12))
+        self._processes_entry.bind("<KeyRelease>", lambda _e: self._refresh_chips())
+
+        self._processes_chips = ctk.CTkFrame(left, fg_color="transparent")
+        self._processes_chips.pack(fill="x", padx=20, pady=(0, 20))
+
+        right = ctk.CTkFrame(page, fg_color=COLORS["bg_card"], corner_radius=14, border_width=1, border_color=COLORS["border"])
+        right.grid(row=0, column=1, sticky="nsew", padx=(8, 0), pady=0)
+
+        ctk.CTkLabel(right, text="🎯  نمونه‌های آماده", font=FONTS["subheading"], text_color=COLORS["text"]).pack(anchor="w", padx=20, pady=(20, 12))
+
+        self._sample_var = ctk.StringVar(value="classic")
+        for key, data in SAMPLE_DATASETS.items():
+            card = ctk.CTkFrame(right, fg_color=COLORS["bg_elevated"], corner_radius=10, border_width=1, border_color=COLORS["border"])
+            card.pack(fill="x", padx=20, pady=4)
+
+            row = ctk.CTkFrame(card, fg_color="transparent")
+            row.pack(fill="x", padx=12, pady=10)
+
+            rb = ctk.CTkRadioButton(
+                row,
+                text="",
+                variable=self._sample_var,
+                value=key,
+                width=20,
+                command=lambda k=key: self._load_sample(k),
+            )
+            rb.pack(side="left")
+
+            info = ctk.CTkFrame(row, fg_color="transparent")
+            info.pack(side="left", fill="x", expand=True, padx=(4, 0))
+            ctk.CTkLabel(info, text=key.upper(), font=FONTS["body_bold"], text_color=COLORS["text"], anchor="w").pack(anchor="w")
+            ctk.CTkLabel(info, text=data["description"], font=FONTS["small"], text_color=COLORS["text_muted"], anchor="w").pack(anchor="w")
+            ctk.CTkLabel(
+                info,
+                text=f"B:{data['blocks']}  P:{data['processes']}",
+                font=FONTS["mono"],
+                text_color=COLORS["text_dim"],
+                anchor="w",
+            ).pack(anchor="w", pady=(2, 0))
+
+        ctk.CTkFrame(right, fg_color=COLORS["border"], height=1).pack(fill="x", padx=20, pady=16)
+
+        btn_row = ctk.CTkFrame(right, fg_color="transparent")
+        btn_row.pack(fill="x", padx=20, pady=(0, 20))
+
+        ctk.CTkButton(
+            btn_row, text="📂  بارگذاری JSON", height=40, corner_radius=10,
+            fg_color=COLORS["bg_elevated"], hover_color=COLORS["border"],
+            border_width=1, border_color=COLORS["border"],
+            command=self._load_json,
+        ).pack(side="left", padx=(0, 8))
+
+        ctk.CTkButton(
+            btn_row, text="🗑  پاک کردن", height=40, corner_radius=10,
+            fg_color=COLORS["bg_elevated"], hover_color=COLORS["danger_bg"],
+            border_width=1, border_color=COLORS["border"],
+            command=self._clear_input,
+        ).pack(side="left")
+
+        summary = ctk.CTkFrame(page, fg_color=COLORS["bg_card"], corner_radius=14, border_width=1, border_color=COLORS["border"])
+        summary.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(16, 0))
+
+        sum_inner = ctk.CTkFrame(summary, fg_color="transparent")
+        sum_inner.pack(fill="x", padx=20, pady=16)
+
+        self._summary_labels = {}
+        for key, label, icon in [
+            ("blocks", "تعداد بلوک‌ها", "📦"),
+            ("processes", "تعداد پردازه‌ها", "⚙️"),
+            ("total_mem", "کل حافظه", "💾"),
+            ("total_proc", "کل اندازه پردازه‌ها", "📐"),
+        ]:
+            cell = ctk.CTkFrame(sum_inner, fg_color=COLORS["bg_elevated"], corner_radius=10)
+            cell.pack(side="left", fill="x", expand=True, padx=6)
+            ctk.CTkLabel(cell, text=f"{icon} {label}", font=FONTS["small"], text_color=COLORS["text_muted"]).pack(pady=(10, 0))
+            lbl = ctk.CTkLabel(cell, text="—", font=FONTS["heading"], text_color=COLORS["primary"])
+            lbl.pack(pady=(4, 12))
+            self._summary_labels[key] = lbl
+
+        return page
