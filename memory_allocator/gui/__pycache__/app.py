@@ -421,4 +421,107 @@ class MemoryAllocatorApp(ctk.CTk):
 
         return page
 
- 
+    def _build_compare_card(self, parent, strategy: str) -> ctk.CTkFrame:
+        color = STRATEGY_COLORS[strategy]
+        card = ctk.CTkFrame(
+            parent, fg_color=COLORS["bg_card"], corner_radius=12,
+            border_width=2, border_color=COLORS["border"],
+        )
+        ctk.CTkLabel(card, text=strategy, font=FONTS["subheading"], text_color=color).pack(pady=(16, 8))
+        metrics = ctk.CTkFrame(card, fg_color="transparent")
+        metrics.pack(fill="x", padx=16, pady=(0, 16))
+        card._metric_labels = {}
+        for key, label in [
+            ("alloc", "تخصیص موفق"),
+            ("frag", "Fragmentation"),
+            ("util", "Utilization"),
+            ("eff", "Efficiency"),
+        ]:
+            row = ctk.CTkFrame(metrics, fg_color="transparent")
+            row.pack(fill="x", pady=3)
+            ctk.CTkLabel(row, text=label, font=FONTS["small"], text_color=COLORS["text_muted"]).pack(side="left")
+            lbl = ctk.CTkLabel(row, text="—", font=FONTS["body_bold"], text_color=COLORS["text"])
+            lbl.pack(side="right")
+            card._metric_labels[key] = lbl
+        return card
+
+    def _build_export_page(self) -> ctk.CTkFrame:
+        page = ctk.CTkFrame(self._content, fg_color="transparent")
+
+        hero = ctk.CTkFrame(page, fg_color=COLORS["bg_card"], corner_radius=14, border_width=1, border_color=COLORS["border"])
+        hero.pack(fill="x", pady=(0, 16))
+        ctk.CTkLabel(hero, text="💾  ذخیره و خروجی", font=FONTS["title"], text_color=COLORS["text"]).pack(anchor="w", padx=24, pady=(24, 8))
+        ctk.CTkLabel(
+            hero,
+            text="گزارش متنی، نمودار مقایسه و نقشه حافظه را ذخیره کنید",
+            font=FONTS["body"],
+            text_color=COLORS["text_muted"],
+        ).pack(anchor="w", padx=24, pady=(0, 20))
+
+        grid = ctk.CTkFrame(page, fg_color="transparent")
+        grid.pack(fill="both", expand=True)
+        grid.grid_columnconfigure((0, 1), weight=1)
+
+        exports = [
+            ("📄  گزارش متنی (TXT)", "ذخیره گزارش کامل شامل جداول و تحلیل", self._export_report, COLORS["primary"]),
+            ("📊  نمودار مقایسه (PNG)", "نمودار bar chart مقایسه سه الگوریتم", self._export_chart, COLORS["secondary"]),
+            ("🗺  نقشه‌های حافظه (PNG)", "ذخیره نقشه هر الگوریتم در پوشه output", self._export_maps, COLORS["info"]),
+            ("📋  کپی خلاصه", "کپی نتایج مقایسه به کلیپبورد", self._copy_summary, COLORS["success"]),
+        ]
+
+        for i, (title, desc, cmd, accent) in enumerate(exports):
+            card = ctk.CTkFrame(
+                grid, fg_color=COLORS["bg_card"], corner_radius=14,
+                border_width=1, border_color=COLORS["border"],
+            )
+            card.grid(row=i // 2, column=i % 2, sticky="nsew", padx=8, pady=8)
+
+            accent_bar = ctk.CTkFrame(card, fg_color=accent, height=4, corner_radius=2)
+            accent_bar.pack(fill="x", padx=16, pady=(16, 0))
+
+            ctk.CTkLabel(card, text=title, font=FONTS["subheading"], text_color=COLORS["text"]).pack(anchor="w", padx=20, pady=(12, 4))
+            ctk.CTkLabel(card, text=desc, font=FONTS["small"], text_color=COLORS["text_muted"]).pack(anchor="w", padx=20, pady=(0, 16))
+
+            ctk.CTkButton(
+                card, text="اجرا", height=40, corner_radius=10,
+                fg_color=accent, hover_color=COLORS["primary_hover"],
+                command=cmd,
+            ).pack(anchor="w", padx=20, pady=(0, 20))
+
+        return page
+
+    # ── Navigation ──────────────────────────────────────────────────────
+
+    def _show_page(self, page_key: str) -> None:
+        self._current_page = page_key
+        titles = {
+            "input": "ورودی شبیه‌سازی",
+            "results": "نتایج الگوریتم‌ها",
+            "compare": "مقایسه و تحلیل",
+            "export": "ذخیره خروجی",
+        }
+        self._header_title.configure(text=titles.get(page_key, ""))
+
+        for key, btn in self._nav_buttons.items():
+            btn.set_active(key == page_key)
+
+        for key, frame in self._pages.items():
+            if key == page_key:
+                frame.grid(row=0, column=0, sticky="nsew")
+            else:
+                frame.grid_forget()
+
+    def _set_status(self, text: str, level: str = "ready") -> None:
+        styles = {
+            "ready": (COLORS["success"], COLORS["success_bg"], "● آماده"),
+            "running": (COLORS["warning"], COLORS["warning_bg"], "◌ در حال اجرا..."),
+            "done": (COLORS["success"], COLORS["success_bg"], "✓ انجام شد"),
+            "error": (COLORS["danger"], COLORS["danger_bg"], "✕ خطا"),
+        }
+        color, bg, default = styles.get(level, styles["ready"])
+        self._status_badge.configure(text=text or default, text_color=color, fg_color=bg)
+
+    def _toast(self, message: str, level: str = "info") -> None:
+        Toast(self, message, level=level)
+
+   
