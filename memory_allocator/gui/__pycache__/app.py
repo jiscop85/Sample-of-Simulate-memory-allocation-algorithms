@@ -715,3 +715,111 @@ class MemoryAllocatorApp(ctk.CTk):
         self._comparison_chart.update_results(self._results)
 
 
+    # ── Export ──────────────────────────────────────────────────────────
+
+    def _ensure_results(self) -> bool:
+        if not self._results:
+            self._toast("ابتدا شبیه‌سازی را اجرا کنید", "warning")
+            return False
+        return True
+
+    def _export_report(self) -> None:
+        if not self._ensure_results():
+            return
+        path = filedialog.asksaveasfilename(
+            defaultextension=".txt",
+            filetypes=[("Text files", "*.txt")],
+            initialfile="memory_allocation_report.txt",
+            initialdir=str(Path.cwd() / "output"),
+        )
+        if not path:
+            return
+        report = build_report(self._blocks, self._processes, self._results)
+        saved = save_report_to_file(report, path)
+        self._toast(f"گزارش ذخیره شد", "success")
+
+    def _export_chart(self) -> None:
+        if not self._ensure_results():
+            return
+        path = filedialog.asksaveasfilename(
+            defaultextension=".png",
+            filetypes=[("PNG images", "*.png")],
+            initialfile="comparison_chart.png",
+            initialdir=str(Path.cwd() / "output"),
+        )
+        if not path:
+            return
+        self._comparison_chart.save_png(path)
+        self._toast("نمودار ذخیره شد", "success")
+
+    def _export_maps(self) -> None:
+        if not self._ensure_results():
+            return
+        folder = filedialog.askdirectory(
+            title="انتخاب پوشه ذخیره",
+            initialdir=str(Path.cwd() / "output" / "memory_maps"),
+        )
+        if not folder:
+            return
+        try:
+            from matplotlib.figure import Figure
+            from matplotlib.backends.backend_agg import FigureCanvasAgg
+            import matplotlib.patches as mpatches
+
+            out = Path(folder)
+            out.mkdir(parents=True, exist_ok=True)
+
+            for result in self._results:
+                fig = Figure(figsize=(10, 2.5), dpi=120)
+                fig.patch.set_facecolor(COLORS["bg_dark"])
+                ax = fig.add_subplot(111)
+                ax.set_facecolor(COLORS["bg_card"])
+                ax.set_xlim(0, result.total_memory)
+                ax.set_ylim(0, 1)
+                ax.axis("off")
+                ax.set_title(f"Memory Map — {result.strategy_name}", color=COLORS["text"], fontsize=12)
+
+                x = 0
+                colors_list = ["#6366f1", "#8b5cf6", "#06b6d4", "#10b981", "#f59e0b"]
+                for i, block in enumerate(result.block_states):
+                    color = colors_list[i % len(colors_list)] if block.is_used else COLORS["block_free"]
+                    rect = mpatches.FancyBboxPatch(
+                        (x, 0.25), block.size, 0.5,
+                        boxstyle="round,pad=0.01,rounding_size=1",
+                        facecolor=color, edgecolor=COLORS["border"],
+                    )
+                    ax.add_patch(rect)
+                    label = f"B{block.block_id}"
+                    if block.is_used:
+                        label += f"\nP{block.process_id}"
+                    ax.text(x + block.size / 2, 0.5, label, ha="center", va="center", color="#fff", fontsize=8)
+                    x += block.size
+
+                canvas = FigureCanvasAgg(fig)
+                fname = out / f"{result.strategy_name.lower().replace(' ', '_')}_map.png"
+                canvas.print_png(str(fname))
+
+            self._toast(f"نقشه‌ها در {folder} ذخیره شدند", "success")
+        except Exception as exc:
+            self._toast(str(exc), "error")
+
+    def _copy_summary(self) -> None:
+        if not self._ensure_results():
+            return
+        lines = ["مقایسه الگوریتم‌های تخصیص حافظه", ""]
+        for r in self._results:
+            lines.append(
+                f"{r.strategy_name}: Alloc={r.allocated_processes}/{len(r.records)}, "
+                f"Used={r.used_memory}KB, Frag={r.internal_fragmentation}KB, "
+                f"Util={r.memory_utilization:.1f}%"
+            )
+        text = "\n".join(lines)
+        self.clipboard_clear()
+        self.clipboard_append(text)
+        self._toast("خلاصه در کلیپبورد کپی شد", "success")
+
+
+def launch_gui() -> None:
+    """Start the GUI application."""
+    app = MemoryAllocatorApp()
+    app.mainloop()
