@@ -93,3 +93,59 @@ class ComparisonChartPanel(ctk.CTkFrame):
     def save_png(self, path: str) -> None:
         self._fig.savefig(path, dpi=150, bbox_inches="tight", facecolor=COLORS["bg_dark"])
 
+
+class StrategyDetailChart(ctk.CTkFrame):
+    """Per-strategy donut + metrics mini chart."""
+
+    def __init__(self, master, **kwargs) -> None:
+        super().__init__(master, fg_color=COLORS["bg_card"], corner_radius=12, **kwargs)
+        self._fig = Figure(figsize=(5, 2.8), dpi=100)
+        self._canvas = FigureCanvasTkAgg(self._fig, master=self)
+        self._canvas.get_tk_widget().pack(fill="both", expand=True, padx=6, pady=6)
+
+    def update_result(self, result: Optional[SimulationResult]) -> None:
+        self._fig.clear()
+        if not result:
+            ax = self._fig.add_subplot(111)
+            _style_figure(self._fig)
+            ax.text(0.5, 0.5, "—", ha="center", va="center", color=COLORS["text_dim"], transform=ax.transAxes)
+            ax.set_xticks([])
+            ax.set_yticks([])
+            self._canvas.draw()
+            return
+
+        ax = self._fig.add_subplot(111)
+        _style_figure(self._fig)
+
+        used = result.used_memory
+        frag = result.internal_fragmentation
+        free = result.free_memory
+        sizes = [used, frag, free]
+        labels = ["Used", "Internal Frag.", "Free"]
+        chart_colors = [COLORS["success"], COLORS["warning"], COLORS["block_free"]]
+
+        if sum(sizes) == 0:
+            sizes, labels, chart_colors = [1], ["Empty"], [COLORS["text_dim"]]
+
+        wedges, texts, autotexts = ax.pie(
+            sizes,
+            labels=labels,
+            colors=chart_colors,
+            autopct="%1.1f%%",
+            startangle=90,
+            textprops={"color": COLORS["text"], "fontsize": 9},
+            wedgeprops={"edgecolor": COLORS["border"], "linewidth": 1.5},
+        )
+        for t in autotexts:
+            t.set_fontsize(8)
+            t.set_color("#ffffff")
+
+        color = STRATEGY_COLORS.get(result.strategy_name, COLORS["primary"])
+        ax.set_title(
+            f"{result.strategy_name} — Memory Distribution",
+            fontsize=11,
+            color=color,
+            pad=8,
+        )
+        self._fig.tight_layout()
+        self._canvas.draw()
