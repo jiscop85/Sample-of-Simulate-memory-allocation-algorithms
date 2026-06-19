@@ -600,5 +600,118 @@ class MemoryAllocatorApp(ctk.CTk):
             raise ValueError("لیست پردازه‌ها نباید خالی باشد.")
         return blocks, processes
 
+    # ── Simulation ──────────────────────────────────────────────────────
+
+    def _run_simulation(self) -> None:
+        try:
+            blocks, processes = self._parse_input()
+        except ValueError as exc:
+            self._toast(str(exc), "error")
+            self._set_status("", "error")
+            return
+
+        self._set_status("", "running")
+        self._show_progress(True)
+
+        def worker() -> None:
+            try:
+                sim = MemoryAllocationSimulator(blocks, processes)
+                results = sim.run_all()
+                self.after(0, lambda: self._on_simulation_done(blocks, processes, results, None))
+            except Exception as exc:
+                self.after(0, lambda: self._on_simulation_done([], [], [], exc))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _show_progress(self, visible: bool) -> None:
+        if visible:
+            if not hasattr(self, "_progress"):
+                self._progress = ctk.CTkProgressBar(
+                    self._header, mode="indeterminate",
+                    progress_color=COLORS["primary"],
+                    width=120,
+                )
+            self._progress.pack(side="right", padx=(0, 12))
+            self._progress.start()
+        elif hasattr(self, "_progress"):
+            self._progress.stop()
+            self._progress.pack_forget()
+
+    def _on_simulation_done(
+        self,
+        blocks: List[int],
+        processes: List[int],
+        results: List[SimulationResult],
+        error: Optional[Exception],
+    ) -> None:
+        self._show_progress(False)
+
+        if error:
+            self._set_status("", "error")
+            self._toast(str(error), "error")
+            return
+
+        self._blocks = blocks
+        self._processes = processes
+        self._results = results
+
+        self._update_results_ui()
+        self._update_compare_ui()
+        self._set_status("", "done")
+        self._toast("شبیه‌سازی با موفقیت انجام شد!", "success")
+        self._show_page("results")
+
+    def _update_results_ui(self) -> None:
+        for result in self._results:
+            strategy = result.strategy_name
+            cards = self._stat_cards.get(strategy, [])
+            if len(cards) >= 4:
+                cards[0].set_value(f"{result.used_memory} KB")
+                cards[1].set_value(f"{result.internal_fragmentation} KB")
+                cards[2].set_value(f"{result.free_memory} KB")
+                cards[3].set_value(f"{result.memory_utilization:.1f}%")
+
+            if strategy in self._memory_maps:
+                self._memory_maps[strategy].show_result(result)
+            if strategy in self._allocation_tables:
+                self._allocation_tables[strategy].update_records(result)
+            if strategy in self._detail_charts:
+                self._detail_charts[strategy].update_result(result)
+
+    def _update_compare_ui(self) -> None:
+        if not self._results:
+            return
+
+        best_frag = min(self._results, key=lambda x: (x.internal_fragmentation, -x.allocated_processes))
+        best_util = max(self._results, key=lambda x: x.memory_utilization)
+        most_alloc = max(self._results, key=lambda x: (x.allocated_processes, -x.internal_fragmentation))
+
+        winner = best_util if best_util.allocated_processes >= most_alloc.allocated_processes else most_alloc
+        self._winner_label.configure(
+            text=(
+                f"🏆  بهترین الگوریتم: {winner.strategy_name}  |  "
+                f"Utilization: {winner.memory_utilization:.1f}%  |  "
+                f"Frag: {winner.internal_fragmentation} KB  |  "
+                f"تخصیص: {winner.allocated_processes}/{len(winner.records)}"
+            )
+        )
+
+        for result in self._results:
+            card = self._compare_cards.get(result.strategy_name)
+            if not card:
+                continue
+            labels = card._metric_labels
+            labels["alloc"].configure(
+                text=f"{result.allocated_processes}/{len(result.records)}",
+                text_color=COLORS["success"] if not result.unallocated_processes else COLORS["warning"],
+            )
+            labels["frag"].configure(text=f"{result.internal_fragmentation} KB")
+            labels["util"].configure(text=f"{result.memory_utilization:.1f}%")
+            labels["eff"].configure(text=f"{result.allocation_efficiency:.1f}%")
+
+            is_best = result.strategy_name == winner.strategy_name
+            card.configure(border_color=COLORS["success"] if is_best else COLORS["border"])
+
+        self._comparison_chart.update_results(self._results)
 
 
