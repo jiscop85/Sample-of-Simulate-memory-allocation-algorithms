@@ -310,3 +310,115 @@ class MemoryAllocatorApp(ctk.CTk):
             self._summary_labels[key] = lbl
 
         return page
+
+    def _build_results_page(self) -> ctk.CTkFrame:
+        page = ctk.CTkFrame(self._content, fg_color="transparent")
+        page.grid_columnconfigure(0, weight=1)
+        page.grid_rowconfigure(1, weight=1)
+
+        self._results_tabview = ctk.CTkTabview(
+            page,
+            fg_color=COLORS["bg_card"],
+            segmented_button_fg_color=COLORS["bg_elevated"],
+            segmented_button_selected_color=COLORS["primary"],
+            segmented_button_selected_hover_color=COLORS["primary_hover"],
+            segmented_button_unselected_color=COLORS["bg_elevated"],
+            segmented_button_unselected_hover_color=COLORS["border"],
+            corner_radius=14,
+        )
+        self._results_tabview.grid(row=0, column=0, rowspan=2, sticky="nsew")
+
+        for strategy in ("First Fit", "Best Fit", "Worst Fit"):
+            tab = self._results_tabview.add(f"  {strategy}  ")
+            tab.grid_columnconfigure(0, weight=1)
+            self._strategy_tabs[strategy] = tab
+            self._build_strategy_tab(tab, strategy)
+
+        return page
+
+    def _build_strategy_tab(self, tab: ctk.CTkFrame, strategy: str) -> None:
+        color = STRATEGY_COLORS[strategy]
+
+        cards_row = ctk.CTkFrame(tab, fg_color="transparent")
+        cards_row.pack(fill="x", padx=12, pady=(12, 8))
+        cards_row.grid_columnconfigure((0, 1, 2, 3), weight=1)
+
+        card_defs = [
+            ("used", "Used Memory", "💚", COLORS["success"]),
+            ("frag", "Internal Frag.", "⚠️", COLORS["warning"]),
+            ("free", "Free Memory", "🆓", COLORS["info"]),
+            ("util", "Utilization", "📈", color),
+        ]
+        cards: List[StatCard] = []
+        for i, (key, title, icon, accent) in enumerate(card_defs):
+            card = StatCard(cards_row, title=title, icon=icon, accent=accent)
+            card.grid(row=0, column=i, sticky="ew", padx=4)
+            cards.append(card)
+        self._stat_cards[strategy] = cards
+
+        mid = ctk.CTkFrame(tab, fg_color="transparent")
+        mid.pack(fill="both", expand=True, padx=12, pady=8)
+        mid.grid_columnconfigure(0, weight=3)
+        mid.grid_columnconfigure(1, weight=2)
+        mid.grid_rowconfigure(0, weight=1)
+
+        left_col = ctk.CTkFrame(mid, fg_color="transparent")
+        left_col.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+
+        map_frame = ctk.CTkFrame(left_col, fg_color=COLORS["bg_card"], corner_radius=12, border_width=1, border_color=COLORS["border"])
+        map_frame.pack(fill="x", pady=(0, 8))
+        ctk.CTkLabel(map_frame, text="🗺  نقشه حافظه", font=FONTS["body_bold"], text_color=COLORS["text"]).pack(anchor="w", padx=14, pady=(12, 4))
+        mem_map = MemoryMapCanvas(map_frame, height=110)
+        mem_map.pack(fill="x", padx=12, pady=(0, 12))
+        self._memory_maps[strategy] = mem_map
+
+        table_frame = ctk.CTkFrame(left_col, fg_color=COLORS["bg_card"], corner_radius=12, border_width=1, border_color=COLORS["border"])
+        table_frame.pack(fill="both", expand=True)
+        ctk.CTkLabel(table_frame, text="📋  جدول تخصیص", font=FONTS["body_bold"], text_color=COLORS["text"]).pack(anchor="w", padx=14, pady=(12, 4))
+        table = AllocationTable(table_frame, height=200)
+        table.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+        self._allocation_tables[strategy] = table
+
+        right_col = ctk.CTkFrame(mid, fg_color="transparent")
+        right_col.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
+
+        chart_frame = ctk.CTkFrame(right_col, fg_color=COLORS["bg_card"], corner_radius=12, border_width=1, border_color=COLORS["border"])
+        chart_frame.pack(fill="both", expand=True)
+        ctk.CTkLabel(chart_frame, text="📊  توزیع حافظه", font=FONTS["body_bold"], text_color=COLORS["text"]).pack(anchor="w", padx=14, pady=(12, 4))
+        detail_chart = StrategyDetailChart(chart_frame)
+        detail_chart.pack(fill="both", expand=True, padx=8, pady=(0, 8))
+        self._detail_charts[strategy] = detail_chart
+
+    def _build_compare_page(self) -> ctk.CTkFrame:
+        page = ctk.CTkScrollableFrame(self._content, fg_color="transparent")
+
+        self._winner_banner = ctk.CTkFrame(
+            page, fg_color=COLORS["success_bg"], corner_radius=14,
+            border_width=2, border_color=COLORS["success"],
+        )
+        self._winner_banner.pack(fill="x", pady=(0, 16))
+        self._winner_label = ctk.CTkLabel(
+            self._winner_banner,
+            text="🏆  پس از اجرای شبیه‌سازی، بهترین الگوریتم اینجا نمایش داده می‌شود",
+            font=FONTS["body_bold"],
+            text_color=COLORS["success"],
+        )
+        self._winner_label.pack(padx=20, pady=16)
+
+        self._compare_cards_row = ctk.CTkFrame(page, fg_color="transparent")
+        self._compare_cards_row.pack(fill="x", pady=(0, 16))
+        self._compare_cards: Dict[str, ctk.CTkFrame] = {}
+        for strategy in ("First Fit", "Best Fit", "Worst Fit"):
+            card = self._build_compare_card(self._compare_cards_row, strategy)
+            card.pack(side="left", fill="both", expand=True, padx=6)
+            self._compare_cards[strategy] = card
+
+        chart_wrap = ctk.CTkFrame(page, fg_color=COLORS["bg_card"], corner_radius=14, border_width=1, border_color=COLORS["border"])
+        chart_wrap.pack(fill="both", expand=True)
+        ctk.CTkLabel(chart_wrap, text="📊  نمودار مقایسه الگوریتم‌ها", font=FONTS["subheading"], text_color=COLORS["text"]).pack(anchor="w", padx=16, pady=(14, 4))
+        self._comparison_chart = ComparisonChartPanel(chart_wrap)
+        self._comparison_chart.pack(fill="both", expand=True, padx=8, pady=(0, 12))
+
+        return page
+
+ 
