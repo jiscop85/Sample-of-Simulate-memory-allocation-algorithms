@@ -230,5 +230,122 @@ class MemoryMapCanvas(tk.Canvas):
         self.create_text(margin + 290, legend_y - 4, text="Fragmentation", fill=COLORS["text_muted"], anchor="w", font=("Segoe UI", 9))
 
 
+class AllocationTable(ctk.CTkScrollableFrame):
+    """Scrollable allocation results table."""
+
+    HEADERS = ["پردازه", "اندازه", "بلوک", "سایز بلوک", "Frag.", "وضعیت"]
+
+    def __init__(self, master, **kwargs) -> None:
+        super().__init__(
+            master,
+            fg_color=COLORS["bg_input"],
+            corner_radius=10,
+            **kwargs,
+        )
+        self._header_frame = self._build_header()
+
+    def _build_header(self) -> ctk.CTkFrame:
+        header = ctk.CTkFrame(self, fg_color=COLORS["bg_elevated"], corner_radius=8)
+        header.pack(fill="x", padx=4, pady=(4, 8))
+        widths = [70, 70, 70, 90, 60, 100]
+        for i, (col, w) in enumerate(zip(self.HEADERS, widths)):
+            ctk.CTkLabel(
+                header,
+                text=col,
+                width=w,
+                font=FONTS["body_bold"],
+                text_color=COLORS["text_muted"],
+            ).grid(row=0, column=i, padx=4, pady=8)
+        return header
+
+    def update_records(self, result: SimulationResult) -> None:
+        for child in self.winfo_children():
+            if child is not self._header_frame:
+                child.destroy()
+
+        strategy_color = STRATEGY_COLORS.get(result.strategy_name, COLORS["primary"])
+        widths = [70, 70, 70, 90, 60, 100]
+
+        for row_idx, record in enumerate(result.records):
+            row_bg = COLORS["bg_card"] if row_idx % 2 == 0 else COLORS["bg_elevated"]
+            row = ctk.CTkFrame(self, fg_color=row_bg, corner_radius=6)
+            row.pack(fill="x", padx=4, pady=2)
+
+            if record.is_allocated:
+                status = "✓ تخصیص"
+                status_color = COLORS["success"]
+                cells = [
+                    f"P{record.process_id}",
+                    f"{record.process_size}",
+                    f"B{record.block_id}",
+                    f"{record.block_size}",
+                    str(record.internal_fragmentation),
+                    status,
+                ]
+            else:
+                status_color = COLORS["danger"]
+                cells = [
+                    f"P{record.process_id}",
+                    f"{record.process_size}",
+                    "—",
+                    "—",
+                    "—",
+                    "✗ ناموفق",
+                ]
+
+            for i, (cell, w) in enumerate(zip(cells, widths)):
+                color = status_color if i == 5 else COLORS["text"]
+                if i == 5 and record.is_allocated:
+                    color = COLORS["success"]
+                ctk.CTkLabel(
+                    row,
+                    text=cell,
+                    width=w,
+                    font=FONTS["mono"] if i < 5 else FONTS["small"],
+                    text_color=color,
+                ).grid(row=0, column=i, padx=4, pady=6)
+
+
+class Toast(ctk.CTkToplevel):
+    """Brief notification popup."""
+
+    def __init__(self, master, message: str, level: str = "info", duration_ms: int = 2800) -> None:
+        super().__init__(master)
+        self.overrideredirect(True)
+        self.attributes("-topmost", True)
+
+        colors = {
+            "info": (COLORS["primary"], COLORS["bg_elevated"]),
+            "success": (COLORS["success"], COLORS["success_bg"]),
+            "error": (COLORS["danger"], COLORS["danger_bg"]),
+            "warning": (COLORS["warning"], COLORS["warning_bg"]),
+        }
+        accent, bg = colors.get(level, colors["info"])
+
+        icons = {"info": "ℹ", "success": "✓", "error": "✕", "warning": "⚠"}
+        frame = ctk.CTkFrame(
+            self,
+            fg_color=bg,
+            corner_radius=10,
+            border_width=2,
+            border_color=accent,
+        )
+        frame.pack(padx=2, pady=2)
+
+        inner = ctk.CTkFrame(frame, fg_color="transparent")
+        inner.pack(padx=16, pady=12)
+
+        ctk.CTkLabel(
+            inner,
+            text=f"{icons.get(level, 'ℹ')}  {message}",
+            font=FONTS["body"],
+            text_color=COLORS["text"],
+        ).pack()
+
+        self.update_idletasks()
+        mx = master.winfo_rootx() + master.winfo_width() - self.winfo_width() - 24
+        my = master.winfo_rooty() + 24
+        self.geometry(f"+{mx}+{my}")
+        self.after(duration_ms, self.destroy)
   
 
